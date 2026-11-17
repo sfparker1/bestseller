@@ -1,4 +1,5 @@
-﻿{% extends "base.html" %}{% block body %}<h1>Sign in</h1><form method="post" class="card">
-{% if per_user %}<p><input name="user" placeholder="user" autofocus></p>{% endif %}
-<p><input type="password" name="password" placeholder="password" {% if not per_user %}autofocus{% endif %}></p>
-{% if err %}<p class="err">{{err}}</p>{% endif %}<button>Sign in</button></form>{% endblock %}
+{% extends "base.html" %}{% block body %}<div class="card" style="max-width:360px;margin:6vh auto">
+<div class="eyebrow">Sign in</div><h1 style="margin-top:8px">Team access</h1><p class="sub">Weekly selling report photos and scents.</p>
+<form method="post">{% if per_user %}<p><input type="text" name="user" placeholder="Username" autofocus></p>{% endif %}
+<p><input type="password" name="password" placeholder="Password" {% if not per_user %}autofocus{% endif %}></p>
+{% if err %}<p class="err">{{ err }}</p>{% endif %}<button>Sign in</button></form></div>{% endblock %}
