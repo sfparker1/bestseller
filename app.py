@@ -88,6 +88,8 @@ def _run_job(jid, src, out, name):
 
     def prog(msg, done=0, total=0):
         j.update(msg=msg, done=done, total=total)
+        if total and (done == 0 or done % 25 == 0 or done == total):
+            print('job %s: %s' % (jid, msg), flush=True)
     try:
         rep = engine.process(src, out, dbx, CACHE_DIR, progress=prog, save_new_scents=True)
         rcsv = os.path.join(JOBS_DIR, jid + '_report.csv')
@@ -95,6 +97,7 @@ def _run_job(jid, src, out, name):
             f.write(engine.report_csv(rep))
         j.update(state='done', report=rep, msg='Done')
     except Exception as e:
+        import traceback; traceback.print_exc()
         j.update(state='error', msg=str(e))
 
 

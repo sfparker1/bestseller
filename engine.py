@@ -10,7 +10,6 @@ from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, TwoCellAnchor
 from openpyxl.styles import Alignment, PatternFill
 from openpyxl.utils.units import pixels_to_EMU
 
-import crop_lib
 import scents as scents_mod
 
 HEADER_SCAN_ROWS = 15
@@ -86,6 +85,7 @@ def get_crop(sku, source, cache_dir, log):
             pass
     try:
         raw = source.download(path)
+        import crop_lib   # lazy: cv2/scipy only load when a photo needs cropping
         out = crop_lib.crop_product(raw)
     except Exception as e:  # network / decode errors shouldn't kill the whole run
         return None, 'failed', 'photo fetch/crop failed: %s' % e
@@ -107,7 +107,7 @@ def _anchor(ws_row0, col0, w_px, h_px):
     return a
 
 
-def process(src_xlsx, out_xlsx, source, cache_dir, scents_path=None, progress=None, workers=6, save_new_scents=False):
+def process(src_xlsx, out_xlsx, source, cache_dir, scents_path=None, progress=None, workers=int(os.environ.get('CROP_WORKERS', '2')), save_new_scents=False):
     """Fill workbook. Returns report dict."""
     from PIL import Image
     progress = progress or (lambda *a, **k: None)
