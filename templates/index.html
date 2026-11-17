@@ -1,0 +1,14 @@
+﻿{% extends "base.html" %}{% block body %}<h1>Weekly selling report: photos + scents</h1>
+<p class="muted">Signed in as {{user}} · <a href="/logout">sign out</a></p>
+{% if not dbx_ok %}<p class="err">Dropbox token is not configured on the server (see DEPLOY.md).</p>{% endif %}
+{% if err %}<p class="err">{{err}}</p>{% endif %}
+<form class="card" method="post" action="/run" enctype="multipart/form-data">
+<p><b>1.</b> Choose this week's workbook (.xlsx)</p><p><input type="file" name="file" accept=".xlsx" required></p>
+<p><b>2.</b> <button>Run</button></p>
+<p class="muted">Photos come from Dropbox <code>{{folder}}</code> (exact SKU name). Only the needed files are fetched; crops are cached by SKU, so repeat weeks are fast.</p></form>
+<div class="card"><b>Scent list</b> <span class="muted">(scents.csv: new SKUs are appended automatically, flagged guess = Y)</span><br><br>
+<a class="btn" href="/scents">Download scents.csv</a>
+<form method="post" action="/scents" enctype="multipart/form-data" style="display:inline-block;margin-left:12px"><input type="file" name="file" accept=".csv" required> <button>Upload edited copy</button></form>
+<p class="muted">Fix a guessed scent: edit it in the CSV and clear the "guess" column, then upload.</p>
+<form method="post" action="/refresh-index"><button>Re-scan Dropbox folder</button> <span class="muted">(use if photos were just added; otherwise cached 15 min)</span></form></div>
+{% endblock %}

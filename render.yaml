@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: sku-photo-webapp
+    runtime: python
+    plan: starter               # needs a disk, so not "free". ~512MB RAM is enough (images are downscaled).
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    disk:
+      name: sku-photo-data
+      mountPath: /var/data
+      sizeGB: 2
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DROPBOX_FOLDER
+        value: /S+F/TOP Pictures
+      # Secrets: set in the Render dashboard (Environment tab); never commit values.
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false
+      - key: DROPBOX_APP_KEY
+        sync: false
+      - key: DROPBOX_APP_SECRET
+        sync: false
+      - key: DROPBOX_ACCESS_TOKEN     # alternative to the three above (simple, but expires unless long-lived)
+        sync: false
+      - key: APP_PASSWORD             # shared team password, OR use APP_USERS below
+        sync: false
+      - key: APP_USERS                # optional per-user logins: "alice:pw1,bob:pw2"
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true

@@ -1,0 +1,20 @@
+﻿{% extends "base.html" %}{% block body %}<h1>{{j.name}}</h1><div id="box" class="card"><p id="msg">Starting...</p><progress id="p" value="0" max="1"></progress></div><div id="res"></div>
+<script>
+async function tick(){const s=await (await fetch('/job/{{jid}}/status')).json();
+document.getElementById('msg').textContent=s.msg;const p=document.getElementById('p');p.max=s.total||1;p.value=s.done||0;
+if(s.state=='running'){setTimeout(tick,1500)}else{location.reload()}}
+{% if j.state=='running' %}tick();{% endif %}
+</script>
+{% if j.state=='error' %}<p class="err">Failed: {{j.msg}}</p><p><a href="/">Back</a></p>{% endif %}
+{% if j.state=='done' %}{% set r=j.report %}
+<script>document.getElementById('box').style.display='none'</script>
+<div class="card"><p>Placed <b>{{r.placed}}</b> photos across {{r.rows}} rows on: {{r.sheets|join(', ')}}.</p>
+<p><a class="btn" href="/job/{{jid}}/xlsx">Download workbook</a> &nbsp; <a class="btn" href="/job/{{jid}}/report.csv">Download report (CSV)</a> &nbsp; <a href="/">Run another</a></p></div>
+{% macro tbl(title, rows, cols) %}{% if rows %}<div class="card"><b>{{title}} ({{rows|length}})</b><table><tr>{% for c in cols %}<th>{{c}}</th>{% endfor %}</tr>
+{% for x in rows %}<tr>{% for v in x %}<td>{{v}}</td>{% endfor %}</tr>{% endfor %}</table></div>{% endif %}{% endmacro %}
+{{ tbl('No exact-name photo', r.missing_photo, ['Tab','Row','SKU','Note']) }}
+{{ tbl('Photo fetch/crop failed', r.photo_failed, ['Tab','Row','SKU','Note']) }}
+{{ tbl('Fallback photo used: verify', r.fallback_photo, ['Tab','Row','SKU','Note']) }}
+{{ tbl('Scent guessed / parsed (yellow in workbook): verify', r.scent_review, ['Tab','Row','SKU','Scent','Description']) }}
+{{ tbl('Scent blank', r.scent_blank, ['Tab','Row','SKU','','Description']) }}
+{% endif %}{% endblock %}
