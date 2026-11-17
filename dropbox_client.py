@@ -5,6 +5,7 @@ Auth (first match wins):
   DROPBOX_ACCESS_TOKEN                                           (simple; short-lived unless a legacy long-lived token)
 Scopes needed: files.metadata.read, files.content.read.
 """
+import json
 import os
 import re
 import threading
@@ -47,8 +48,27 @@ class DropboxClient:
     def configured(self):
         return bool(os.environ.get('DROPBOX_ACCESS_TOKEN') or os.environ.get('DROPBOX_REFRESH_TOKEN'))
 
+    def _root_ns(self):
+        """Team accounts: the API starts in the member's home folder, not the team root where /S+F lives.
+        Use DROPBOX_ROOT_NAMESPACE if set, else detect the root namespace once."""
+        if hasattr(self, '_ns'):
+            return self._ns
+        ns = os.environ.get('DROPBOX_ROOT_NAMESPACE') or None
+        if ns is None:
+            try:
+                r = requests.post(API + '/users/get_current_account', headers={'Authorization': 'Bearer ' + self._token()}, timeout=30)
+                ri = r.json().get('root_info', {}) if r.status_code == 200 else {}
+                if ri.get('root_namespace_id') and ri['root_namespace_id'] != ri.get('home_namespace_id'):
+                    ns = ri['root_namespace_id']
+            except Exception:
+                ns = None
+        self._ns = ns
+        return ns
+
     def _hdr(self, extra=None):
         h = {'Authorization': 'Bearer ' + self._token()}
+        if self._root_ns():
+            h['Dropbox-API-Path-Root'] = json.dumps({'.tag': 'root', 'root': self._root_ns()})
         h.update(extra or {})
         return h
 
@@ -63,7 +83,7 @@ class DropboxClient:
                           json={'path': self.folder, 'recursive': False, 'limit': 2000}, timeout=60)
         while True:
             if r.status_code != 200:
-                raise RuntimeError('Dropbox list_folder failed: %s %s' % (r.status_code, r.text[:300]))
+                raise RuntimeError('Dropbox list_folder failed for %r (team root: %s): %s %s' % (self.folder, self._root_ns() or 'none', r.status_code, r.text[:300]))
             j = r.json()
             for e in j['entries']:
                 if e.get('.tag') == 'file' and e['name'].lower().endswith(EXTS):
@@ -93,7 +113,6 @@ class DropboxClient:
         return None
 
     def download(self, path):
-        import json
         for attempt in range(3):
             r = requests.post(CONTENT + '/files/download', timeout=120,
                               headers=self._hdr({'Dropbox-API-Arg': json.dumps({'path': path})}))
