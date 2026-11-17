@@ -1,16 +1,25 @@
 """GrabCut-based product crop (ported from the Photo_Build prototype; bytes in / bytes out)."""
+import io
+
 import cv2
 import numpy as np
-from scipy import ndimage as ndi
+from PIL import Image
 
-MAX_SIDE = 1400   # downscale huge originals before GrabCut (speed + Render memory)
+MAX_SIDE = 900    # GrabCut runs on <=900px copy (output is only 520px): ~3x faster, far less RAM
 OUT_SIDE = 520    # cropped image is stored at most this many px on the long side
 
 
 def crop_product(data: bytes, pad: float = 0.06):
     """Return JPEG bytes of the cropped candle(s), or None if no foreground found."""
-    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-    if img is None:
+    # Decode at reduced size (JPEG draft mode) so a huge original never sits fully in RAM.
+    try:
+        pil = Image.open(io.BytesIO(data))
+        pil.draft('RGB', (MAX_SIDE, MAX_SIDE))
+        pil = pil.convert('RGB')
+        pil.thumbnail((MAX_SIDE, MAX_SIDE))
+        img = cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
+        del pil
+    except Exception:
         return None
     h, w = img.shape[:2]
     s = MAX_SIDE / max(h, w)
@@ -27,10 +36,10 @@ def crop_product(data: bytes, pad: float = 0.06):
     cv2.grabCut(img, mask, None, bgd, fgd, 6, cv2.GC_INIT_WITH_MASK)
     fg = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
-    lab, n = ndi.label(fg)
-    if n == 0:
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(fg, connectivity=8)   # label 0 = background
+    if n <= 1:
         return None
-    sizes = ndi.sum(fg, lab, range(1, n + 1))
+    sizes = stats[1:, cv2.CC_STAT_AREA]
     keep = np.zeros_like(fg)
     for i, sz in enumerate(sizes, 1):
         if sz > .15 * sizes.max():

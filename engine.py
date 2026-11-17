@@ -107,7 +107,7 @@ def _anchor(ws_row0, col0, w_px, h_px):
     return a
 
 
-def process(src_xlsx, out_xlsx, source, cache_dir, scents_path=None, progress=None, workers=int(os.environ.get('CROP_WORKERS', '2')), save_new_scents=False):
+def process(src_xlsx, out_xlsx, source, cache_dir, scents_path=None, progress=None, workers=int(os.environ.get('CROP_WORKERS', '1')), save_new_scents=False):
     """Fill workbook. Returns report dict."""
     from PIL import Image
     progress = progress or (lambda *a, **k: None)
